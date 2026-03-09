@@ -19,6 +19,7 @@ import { deleteKardexProductsBuyed } from '../controllers/kardex_products_buyed/
 // Kardex Products Sold Controllers
 import { getKardexProductsSold } from '../controllers/kardex_products_sold/get_kardex_products_sold';
 import { getKardexProductsSoldById } from '../controllers/kardex_products_sold/get_kardex_products_sold_id';
+import { getKardexProductsSoldQuantityByMonth } from '../controllers/kardex_products_sold/get_kardex_products_sold_quantity_by_month';
 import { createKardexProductsSold } from '../controllers/kardex_products_sold/create_kardex_products_sold';
 import { updateKardexProductsSold } from '../controllers/kardex_products_sold/update_kardex_products_sold';
 import { deleteKardexProductsSold } from '../controllers/kardex_products_sold/delete_kardex_products_sold';
@@ -33,6 +34,7 @@ import {
   CreateKardexProductsSoldSchema,
   UpdateKardexProductsSoldSchema,
   GetKardexProductsSoldQuerySchema,
+  GetKardexProductsSoldQuantityByMonthQuerySchema,
 } from '../schemas/products.schemas';
 import { ErrorResponse, SuccessResponse } from '../schemas/response.schemas';
 
@@ -725,6 +727,44 @@ router.openapi(
     },
   }),
   getKardexProductsSold as any
+);
+
+// kardex_products_sold quantity by month
+router.openapi(
+  createRoute({
+    method: 'get',
+    path: '/kardex_products_sold/quantity_by_month',
+    request: {
+      query: GetKardexProductsSoldQuantityByMonthQuerySchema,
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: SuccessResponse,
+          },
+        },
+        description: 'Quantity sold per month (last 12 months) for a given item_id',
+      },
+      400: {
+        content: {
+          'application/json': {
+            schema: ErrorResponse,
+          },
+        },
+        description: 'Bad Request',
+      },
+      500: {
+        content: {
+          'application/json': {
+            schema: ErrorResponse,
+          },
+        },
+        description: 'Internal Server Error',
+      },
+    },
+  }),
+  getKardexProductsSoldQuantityByMonth as any
 );
 
 // Routes GET by id
