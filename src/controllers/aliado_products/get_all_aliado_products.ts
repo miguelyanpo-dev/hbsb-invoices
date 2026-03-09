@@ -1,21 +1,17 @@
-import { Context } from 'hono/dist/types/context';
+import type { Context } from 'hono';
 import { AliadoProductsService } from '../../services/aliado_products.service';
-import { getDb } from '../../config/db';
-import { SuccessResponse } from '../../schemas/response.schemas';
+import { resolveDb } from '../../utils/request.utils';
 
 export const getAllAliadoProducts = async (c: Context) => {
-  const ref = c.req.query('ref')?.trim();
-  if (ref && process.env.NODE_ENV === 'production' && process.env.ENABLE_DB_REF !== 'true') {
-    return c.json({ success: false, error: 'Not Found' }, 404);
+  const resolved = resolveDb(c);
+  if (resolved.kind === 'error') return c.json(resolved.body, resolved.status);
+  const { db } = resolved;
+
+  try {
+    const products = await AliadoProductsService.getAll(db);
+    return c.json({ success: true, data: products }, 200);
+  } catch (err) {
+    console.error('getAllAliadoProducts error:', err);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
   }
-  const db = getDb(ref);
-
-  const products = await AliadoProductsService.getAll(db);
-
-  const response = {
-    success: true,
-    data: products,
-  };
-
-  return c.json(response, 200);
 };

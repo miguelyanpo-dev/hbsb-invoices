@@ -1,24 +1,15 @@
-import { Context } from 'hono/dist/types/context';
+import type { Context } from 'hono';
 import { UpdateProductsSchema } from '../../schemas/products.schemas';
 import { KardexService } from '../../services/products.service';
-import { getDb } from '../../config/db';
-import { z } from 'zod';
-
-const IdParamSchema = z.object({
-  id: z.string().regex(/^\d+$/),
-});
+import { resolveDb, IdParamSchema } from '../../utils/request.utils';
 
 export const updateKardex = async (c: Context) => {
-  const ref = c.req.query('ref')?.trim();
-  if (ref && process.env.NODE_ENV === 'production' && process.env.ENABLE_DB_REF !== 'true') {
-    return c.json({ success: false, error: 'Not Found' }, 404);
-  }
-  const db = getDb(ref);
+  const resolved = resolveDb(c);
+  if (resolved.kind === 'error') return c.json(resolved.body, resolved.status);
+  const { db } = resolved;
 
-  const params = c.req.param();
-  const parsedParams = IdParamSchema.safeParse(params);
-
-  if (!parsedParams.success) {
+  const parsedId = IdParamSchema.safeParse(c.req.param());
+  if (!parsedId.success) {
     return c.json(
       { success: false, error: 'Bad Request', message: 'Invalid ID format' },
       400
@@ -27,7 +18,6 @@ export const updateKardex = async (c: Context) => {
 
   const body = await c.req.json().catch(() => null);
   const parsedBody = UpdateProductsSchema.safeParse(body);
-
   if (!parsedBody.success) {
     return c.json(
       { success: false, error: 'Bad Request', message: parsedBody.error.message },
@@ -35,15 +25,14 @@ export const updateKardex = async (c: Context) => {
     );
   }
 
-  const id = Number(parsedParams.data.id);
-  const data = await KardexService.update(db, id, parsedBody.data);
-
-  if (!data) {
-    return c.json(
-      { success: false, error: 'Not Found', message: 'Note not found' },
-      404
-    );
+  try {
+    const data = await KardexService.update(db, Number(parsedId.data.id), parsedBody.data);
+    if (!data) {
+      return c.json({ success: false, error: 'Not Found', message: 'Note not found' }, 404);
+    }
+    return c.json({ success: true, data }, 200);
+  } catch (err) {
+    console.error('updateKardex error:', err);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
   }
-
-  return c.json({ success: true, data }, 200);
 };

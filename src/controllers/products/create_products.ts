@@ -1,14 +1,13 @@
-import { Context } from 'hono/dist/types/context';
+import type { Context } from 'hono';
 import { CreateProductsSchema } from '../../schemas/products.schemas';
 import { KardexService } from '../../services/products.service';
-import { getDb } from '../../config/db';
+import { resolveDb } from '../../utils/request.utils';
+import { ConflictError } from '../../utils/errors';
 
 export const createKardex = async (c: Context) => {
-  const ref = c.req.query('ref')?.trim();
-  if (ref && process.env.NODE_ENV === 'production' && process.env.ENABLE_DB_REF !== 'true') {
-    return c.json({ success: false, error: 'Not Found' }, 404);
-  }
-  const db = getDb(ref);
+  const resolved = resolveDb(c);
+  if (resolved.kind === 'error') return c.json(resolved.body, resolved.status);
+  const { db } = resolved;
 
   const body = await c.req.json().catch(() => null);
   const parsed = CreateProductsSchema.safeParse(body);
@@ -23,13 +22,11 @@ export const createKardex = async (c: Context) => {
   try {
     const data = await KardexService.create(db, parsed.data);
     return c.json({ success: true, data }, 201);
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Ya existe un registro con este invoice_id e item_id') {
-      return c.json(
-        { success: false, error: 'Conflict', message: error.message },
-        409
-      );
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      return c.json({ success: false, error: 'Conflict', message: err.message }, 409);
     }
-    throw error;
+    console.error('createKardex error:', err);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
   }
 };

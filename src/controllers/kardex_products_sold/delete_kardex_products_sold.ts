@@ -1,23 +1,13 @@
-import { Context } from 'hono/dist/types/context';
-import { z } from 'zod';
+import type { Context } from 'hono';
 import { KardexProductsSoldService } from '../../services/kardex_products_sold.service';
-import { getDb } from '../../config/db';
-import { SuccessResponse } from '../../schemas/response.schemas';
-
-const IdParamSchema = z.object({
-  id: z.string().regex(/^\d+$/),
-});
+import { resolveDb, IdParamSchema } from '../../utils/request.utils';
 
 export const deleteKardexProductsSold = async (c: Context) => {
-  const ref = c.req.query('ref')?.trim();
-  if (ref && process.env.NODE_ENV === 'production' && process.env.ENABLE_DB_REF !== 'true') {
-    return c.json({ success: false, error: 'Not Found' }, 404);
-  }
-  const db = getDb(ref);
+  const resolved = resolveDb(c);
+  if (resolved.kind === 'error') return c.json(resolved.body, resolved.status);
+  const { db } = resolved;
 
-  const { id } = c.req.param();
-  const parsedId = IdParamSchema.safeParse({ id });
-
+  const parsedId = IdParamSchema.safeParse(c.req.param());
   if (!parsedId.success) {
     return c.json(
       { success: false, error: 'Bad Request', message: parsedId.error.message },
@@ -25,19 +15,14 @@ export const deleteKardexProductsSold = async (c: Context) => {
     );
   }
 
-  const product = await KardexProductsSoldService.deactivate(db, Number(id));
-
-  if (!product) {
-    return c.json(
-      { success: false, error: 'Not Found', message: 'Product not found' },
-      404
-    );
+  try {
+    const product = await KardexProductsSoldService.deactivate(db, Number(parsedId.data.id));
+    if (!product) {
+      return c.json({ success: false, error: 'Not Found', message: 'Product not found' }, 404);
+    }
+    return c.json({ success: true, data: product }, 200);
+  } catch (err) {
+    console.error('deleteKardexProductsSold error:', err);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
   }
-
-  const response = {
-    success: true,
-    data: product,
-  };
-
-  return c.json(response, 200);
 };

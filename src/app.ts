@@ -48,9 +48,6 @@ apiV1.get('/doc', swaggerUI({ url: '/api/v1/openapi.json' }));
 
 app.route('/api/v1', apiV1);
 
-// Mount OpenAPI routes
-app.route('/api/v1', apiV1);
-
 // 404 handler
 app.notFound((c) => {
   return c.json({ 

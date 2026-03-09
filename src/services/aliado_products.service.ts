@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { ConflictError } from '../utils/errors';
 
 export class AliadoProductsService {
   // Obtener todos los productos aliados
@@ -89,7 +90,7 @@ static async create(db: Pool, data: any) {
       [data.item_id]
     );
     if (existingRows.length > 0) {
-      throw new Error('Ya existe un producto con este item_id');
+      throw new ConflictError('Ya existe un producto con este item_id');
     }
   }
 

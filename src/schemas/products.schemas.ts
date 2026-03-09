@@ -243,5 +243,5 @@ export const PaginatedProductsResponseSchema = z.object({
   page_current: z.number(),
   page_total: z.number(),
   have_next_page: z.boolean(),
-  have_previus_page: z.boolean(),
+  have_previous_page: z.boolean(),
 });

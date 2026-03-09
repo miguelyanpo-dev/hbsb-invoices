@@ -1,17 +1,15 @@
-import { Context } from 'hono/dist/types/context';
+import type { Context } from 'hono';
 import { CreateKardexProductsSoldSchema } from '../../schemas/products.schemas';
 import { KardexProductsSoldService } from '../../services/kardex_products_sold.service';
-import { getDb } from '../../config/db';
-import { SuccessResponse } from '../../schemas/response.schemas';
+import { resolveDb } from '../../utils/request.utils';
+import { ConflictError } from '../../utils/errors';
 
 export const createKardexProductsSold = async (c: Context) => {
-  const ref = c.req.query('ref')?.trim();
-  if (ref && process.env.NODE_ENV === 'production' && process.env.ENABLE_DB_REF !== 'true') {
-    return c.json({ success: false, error: 'Not Found' }, 404);
-  }
-  const db = getDb(ref);
+  const resolved = resolveDb(c);
+  if (resolved.kind === 'error') return c.json(resolved.body, resolved.status);
+  const { db } = resolved;
 
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => null);
   const parsed = CreateKardexProductsSoldSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -21,12 +19,14 @@ export const createKardexProductsSold = async (c: Context) => {
     );
   }
 
-  const product = await KardexProductsSoldService.create(db, parsed.data);
-
-  const response = {
-    success: true,
-    data: product,
-  };
-
-  return c.json(response, 201);
+  try {
+    const product = await KardexProductsSoldService.create(db, parsed.data);
+    return c.json({ success: true, data: product }, 201);
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      return c.json({ success: false, error: 'Conflict', message: err.message }, 409);
+    }
+    console.error('createKardexProductsSold error:', err);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
 };

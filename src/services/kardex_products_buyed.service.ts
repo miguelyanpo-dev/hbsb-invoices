@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { ConflictError } from '../utils/errors';
 
 export class KardexProductsBuyedService {
   // Obtener todos los productos comprados
@@ -106,7 +107,7 @@ export class KardexProductsBuyedService {
       );
 
       if (existingRows.length > 0) {
-        throw new Error('Ya existe un registro con este invoice_id e item_id');
+        throw new ConflictError('Ya existe un registro con este invoice_id e item_id');
       }
     }
 

@@ -10,7 +10,7 @@ export const SuccessResponse = z.object({
 export const ErrorResponse = z.object({
   success: z.boolean(),
   error: z.string(),
-  message: z.string(),
+  message: z.string().optional(),
 });
 
 // Schema para los parámetros de query de sellers (sin parámetros por ahora)

@@ -1,19 +1,14 @@
-import { Context } from 'hono/dist/types/context';
+import type { Context } from 'hono';
 import { GetAliadoProductsQuerySchema } from '../../schemas/products.schemas';
 import { AliadoProductsService } from '../../services/aliado_products.service';
-import { getDb } from '../../config/db';
-import { PaginatedProductsResponseSchema } from '../../schemas/products.schemas';
+import { resolveDb, buildPaginatedResponse } from '../../utils/request.utils';
 
 export const getAliadoProducts = async (c: Context) => {
-  const ref = c.req.query('ref')?.trim();
-  if (ref && process.env.NODE_ENV === 'production' && process.env.ENABLE_DB_REF !== 'true') {
-    return c.json({ success: false, error: 'Not Found' }, 404);
-  }
-  const db = getDb(ref);
+  const resolved = resolveDb(c);
+  if (resolved.kind === 'error') return c.json(resolved.body, resolved.status);
+  const { db } = resolved;
 
-  const query = c.req.query();
-  
-  const parsed = GetAliadoProductsQuerySchema.safeParse(query);
+  const parsed = GetAliadoProductsQuerySchema.safeParse(c.req.query());
 
   if (!parsed.success) {
     return c.json(
@@ -33,21 +28,11 @@ export const getAliadoProducts = async (c: Context) => {
     item_name: parsed.data.item_name,
   };
 
-  const { rows, total } = await AliadoProductsService.getPaginated(db, filters);
-
-  const totalPages = Math.ceil(total / limit);
-  const haveNextPage = page < totalPages;
-  const havePreviousPage = page > 1;
-
-  const response = {
-    success: true,
-    data: rows,
-    data_items: total,
-    page_current: page,
-    page_total: totalPages,
-    have_next_page: haveNextPage,
-    have_previus_page: havePreviousPage,
-  };
-
-  return c.json(response, 200);
+  try {
+    const { rows, total } = await AliadoProductsService.getPaginated(db, filters);
+    return c.json(buildPaginatedResponse(rows, total, page, limit), 200);
+  } catch (err) {
+    console.error('getAliadoProducts error:', err);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
 };

@@ -17,5 +17,3 @@ if (process.env.NODE_ENV !== 'production') {
 // This will be used when deployed to Vercel
 export default app;
 
-// Also export as module.exports for CommonJS compatibility
-module.exports = app;
