@@ -47,7 +47,9 @@ export const getKardexProductsSoldQuantityByMonth = async (c: Context) => {
       [item_id]
     );
 
-    return c.json({ success: true, data: rows }, 200);
+    const total_sold = rows.reduce((acc: number, row: { quantity: bigint | number }) => acc + Number(row.quantity), 0);
+
+    return c.json({ success: true, data: rows, total_sold }, 200);
   } catch (err) {
     console.error('getKardexProductsSoldQuantityByMonth error:', err);
     return c.json({ success: false, error: 'Internal Server Error' }, 500);
