@@ -48,7 +48,7 @@ export const SelectInvoiceQuerySchema = z.object({
     description: 'Filtra facturas por contacto.',
   }),
   fields: z.string().optional().openapi({
-    example: 'id_invoice,consecutive,total_amount,balance_amount,status,created_at',
+    example: 'id_invoice,consecutive,total_amount,balance_amount,status,seller_name,created_at',
     description: 'Campos a retornar separados por coma.',
   }),
   page: z.coerce.number().int().positive().default(1),

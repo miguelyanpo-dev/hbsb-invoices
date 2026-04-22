@@ -70,7 +70,7 @@ export const registerInvoicesRoutes = (apiV1: OpenAPIHono) => {
     }
 
     const { whereClauses, values } = buildInvoiceDynamicFilters(queryParams);
-    if (!include_deleted) whereClauses.push('deleted_at IS NULL');
+    if (!include_deleted) whereClauses.push('i.deleted_at IS NULL');
 
     const { data, total } = await listInvoices(db, {
       selectedFields,

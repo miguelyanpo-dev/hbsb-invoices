@@ -6,6 +6,8 @@ import {
 } from '../schemas/invoices.schemas';
 
 const TABLE_NAME = 'invoices';
+const INVOICE_ALIAS = 'i';
+const SELLER_NAME_FIELD = 'seller_name';
 
 const isInvoiceColumn = (value: string) =>
   INVOICE_COLUMNS.includes(value as (typeof INVOICE_COLUMNS)[number]);
@@ -14,16 +16,32 @@ const isMutableColumn = (value: string) =>
   MUTABLE_COLUMNS.includes(value as (typeof MUTABLE_COLUMNS)[number]);
 
 export const parseInvoiceFields = (fieldsValue: string | undefined) => {
-  if (!fieldsValue?.trim()) return '*';
+  const normalizeField = (field: string) => {
+    if (field === SELLER_NAME_FIELD) {
+      return 'seller_contact.contact_name AS seller_name';
+    }
+    return `${INVOICE_ALIAS}.${field} AS ${field}`;
+  };
+
+  if (!fieldsValue?.trim()) {
+    const allInvoiceFields = INVOICE_COLUMNS.map((column) => normalizeField(column)).join(', ');
+    return `${allInvoiceFields}, ${normalizeField(SELLER_NAME_FIELD)}`;
+  }
+
   const parsed = fieldsValue
     .split(',')
     .map((field) => field.trim())
     .filter(Boolean);
 
-  const invalid = parsed.filter((field) => !isInvoiceColumn(field));
+  const invalid = parsed.filter((field) => !isInvoiceColumn(field) && field !== SELLER_NAME_FIELD);
   if (invalid.length) throw new Error(`Invalid fields: ${invalid.join(', ')}`);
 
-  return parsed.length ? parsed.join(', ') : '*';
+  if (!parsed.length) {
+    const allInvoiceFields = INVOICE_COLUMNS.map((column) => normalizeField(column)).join(', ');
+    return `${allInvoiceFields}, ${normalizeField(SELLER_NAME_FIELD)}`;
+  }
+
+  return parsed.map((field) => normalizeField(field)).join(', ');
 };
 
 export const buildInvoiceDynamicFilters = (queryParams: Record<string, string>) => {
@@ -37,7 +55,7 @@ export const buildInvoiceDynamicFilters = (queryParams: Record<string, string>) 
       const column = key.slice(0, -5);
       if (isInvoiceColumn(column)) {
         values.push(value);
-        whereClauses.push(`${column} >= $${values.length}`);
+        whereClauses.push(`${INVOICE_ALIAS}.${column} >= $${values.length}`);
       }
       return;
     }
@@ -46,14 +64,14 @@ export const buildInvoiceDynamicFilters = (queryParams: Record<string, string>) 
       const column = key.slice(0, -3);
       if (isInvoiceColumn(column)) {
         values.push(value);
-        whereClauses.push(`${column} <= $${values.length}`);
+        whereClauses.push(`${INVOICE_ALIAS}.${column} <= $${values.length}`);
       }
       return;
     }
 
     if (isInvoiceColumn(key)) {
       values.push(value);
-      whereClauses.push(`${key} = $${values.length}`);
+      whereClauses.push(`${INVOICE_ALIAS}.${key} = $${values.length}`);
     }
   });
 
@@ -76,19 +94,25 @@ export const listInvoices = async (
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
   const offset = (page - 1) * limit;
   const dataValues = [...whereValues, limit, offset];
+  const sortColumn =
+    sortBy === SELLER_NAME_FIELD ? 'seller_contact.contact_name' : `${INVOICE_ALIAS}.${sortBy}`;
 
   const dataQuery = `
     SELECT ${selectedFields}
-    FROM ${TABLE_NAME}
+    FROM ${TABLE_NAME} ${INVOICE_ALIAS}
+    LEFT JOIN sellers seller ON ${INVOICE_ALIAS}.id_seller = seller.id_seller
+    LEFT JOIN contacts seller_contact ON seller.id_contact = seller_contact.id_contact
     ${whereSql}
-    ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+    ORDER BY ${sortColumn} ${sortOrder.toUpperCase()}
     LIMIT $${whereValues.length + 1}
     OFFSET $${whereValues.length + 2}
   `;
 
   const countQuery = `
     SELECT COUNT(*)::int AS total
-    FROM ${TABLE_NAME}
+    FROM ${TABLE_NAME} ${INVOICE_ALIAS}
+    LEFT JOIN sellers seller ON ${INVOICE_ALIAS}.id_seller = seller.id_seller
+    LEFT JOIN contacts seller_contact ON seller.id_contact = seller_contact.id_contact
     ${whereSql}
   `;
 
@@ -109,11 +133,13 @@ export const getInvoiceById = async (
   selectedFields: string,
   includeDeleted: boolean,
 ) => {
-  const whereDeleted = includeDeleted ? '' : 'AND deleted_at IS NULL';
+  const whereDeleted = includeDeleted ? '' : `AND ${INVOICE_ALIAS}.deleted_at IS NULL`;
   const sql = `
     SELECT ${selectedFields}
-    FROM ${TABLE_NAME}
-    WHERE id_invoice = $1
+    FROM ${TABLE_NAME} ${INVOICE_ALIAS}
+    LEFT JOIN sellers seller ON ${INVOICE_ALIAS}.id_seller = seller.id_seller
+    LEFT JOIN contacts seller_contact ON seller.id_contact = seller_contact.id_contact
+    WHERE ${INVOICE_ALIAS}.id_invoice = $1
     ${whereDeleted}
     LIMIT 1
   `;
