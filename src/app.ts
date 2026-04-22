@@ -4,6 +4,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { logger } from './middlewares/logger';
 import { config } from './config/config';
+import { registerInvoicesRoutes } from './routes/invoices.routes';
 
 const app = new Hono();
 const apiV1 = new OpenAPIHono();
@@ -24,9 +25,9 @@ app.use('*', logger());
 apiV1.doc('/openapi.json', {
   openapi: '3.0.0',
   info: {
-    title: 'Get products API',
+    title: 'HBSB Invoices API',
     version: '1.0.0',
-    description: 'API REST para gestionar productos.',
+    description: 'API REST para gestionar facturas.',
   },
   servers: [
     {
@@ -39,6 +40,8 @@ apiV1.doc('/openapi.json', {
     },
   ],
 });
+
+registerInvoicesRoutes(apiV1);
 
 apiV1.get('/doc', swaggerUI({ url: '/api/v1/openapi.json' }));
 
