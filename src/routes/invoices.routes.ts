@@ -57,7 +57,15 @@ export const registerInvoicesRoutes = (apiV1: OpenAPIHono) => {
 
     const { db } = resolved;
     const queryParams = c.req.query();
-    const { page, limit, sort_by, sort_order, include_deleted, fields } = parsedQuery.data;
+    const {
+      page,
+      limit,
+      sort_by,
+      sort_order,
+      include_deleted,
+      balance_amount_defeated,
+      fields,
+    } = parsedQuery.data;
 
     let selectedFields = '*';
     try {
@@ -70,6 +78,10 @@ export const registerInvoicesRoutes = (apiV1: OpenAPIHono) => {
     }
 
     const { whereClauses, values } = buildInvoiceDynamicFilters(queryParams);
+    if (balance_amount_defeated) {
+      whereClauses.push('i.balance_amount > 0');
+      whereClauses.push('i.due_date < CURRENT_DATE');
+    }
     if (!include_deleted) whereClauses.push('i.deleted_at IS NULL');
 
     const { data, total } = await listInvoices(db, {

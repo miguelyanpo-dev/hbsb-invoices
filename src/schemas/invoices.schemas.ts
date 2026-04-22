@@ -36,6 +36,7 @@ export const RESERVED_QUERY_KEYS = new Set([
   'sort_by',
   'sort_order',
   'include_deleted',
+  'balance_amount_defeated',
 ]);
 
 export const SelectInvoiceQuerySchema = z.object({
@@ -48,7 +49,7 @@ export const SelectInvoiceQuerySchema = z.object({
     description: 'Filtra facturas por contacto.',
   }),
   fields: z.string().optional().openapi({
-    example: 'id_invoice,consecutive,total_amount,balance_amount,status,seller_name,created_at',
+    example: 'id_invoice,consecutive,date,due_date,total_amount,payment_amount,credit_note_amount,debit_note_amount,balance_amount,status,seller_name,created_at',
     description: 'Campos a retornar separados por coma.',
   }),
   page: z.coerce.number().int().positive().default(1),
@@ -56,6 +57,11 @@ export const SelectInvoiceQuerySchema = z.object({
   sort_by: z.enum(INVOICE_COLUMNS).default('id_invoice'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
   include_deleted: z.coerce.boolean().default(false),
+  balance_amount_defeated: z.coerce.boolean().default(false).openapi({
+    example: true,
+    description:
+      'Si es true, retorna facturas vencidas con saldo pendiente (balance_amount > 0 y due_date < hoy).',
+  }),
 });
 
 export const GetInvoiceQuerySchema = z.object({
