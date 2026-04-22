@@ -43,6 +43,10 @@ export const SelectInvoiceQuerySchema = z.object({
     example: 'mfyskybetbwchtvfsbyi',
     description: 'Referencia de la base de datos de Supabase.',
   }),
+  id_contact: z.coerce.number().int().positive().optional().openapi({
+    example: 1891,
+    description: 'Filtra facturas por contacto.',
+  }),
   fields: z.string().optional().openapi({
     example: 'id_invoice,consecutive,total_amount,balance_amount,status,created_at',
     description: 'Campos a retornar separados por coma.',
