@@ -64,6 +64,8 @@ export const registerInvoicesRoutes = (apiV1: OpenAPIHono) => {
       sort_order,
       include_deleted,
       balance_amount_defeated,
+      balance_amount_not_defeated,
+      has_balance_amount,
       fields,
     } = parsedQuery.data;
 
@@ -81,6 +83,13 @@ export const registerInvoicesRoutes = (apiV1: OpenAPIHono) => {
     if (balance_amount_defeated) {
       whereClauses.push('i.balance_amount > 0');
       whereClauses.push('i.due_date < CURRENT_DATE');
+    }
+    if (balance_amount_not_defeated) {
+      whereClauses.push('i.balance_amount > 0');
+      whereClauses.push('i.due_date > CURRENT_DATE');
+    }
+    if (has_balance_amount) {
+      whereClauses.push('i.balance_amount > 0');
     }
     if (!include_deleted) whereClauses.push('i.deleted_at IS NULL');
 

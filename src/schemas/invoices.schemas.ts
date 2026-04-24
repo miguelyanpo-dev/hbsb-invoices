@@ -37,6 +37,8 @@ export const RESERVED_QUERY_KEYS = new Set([
   'sort_order',
   'include_deleted',
   'balance_amount_defeated',
+  'balance_amount_not_defeated',
+  'has_balance_amount',
 ]);
 
 export const SelectInvoiceQuerySchema = z.object({
@@ -62,6 +64,15 @@ export const SelectInvoiceQuerySchema = z.object({
     example: true,
     description:
       'Si es true, retorna facturas vencidas con saldo pendiente (balance_amount > 0 y due_date < hoy).',
+  }),
+  balance_amount_not_defeated: z.coerce.boolean().default(false).openapi({
+    example: true,
+    description:
+      'Si es true, retorna facturas no vencidas con saldo pendiente (balance_amount > 0 y due_date > hoy).',
+  }),
+  has_balance_amount: z.coerce.boolean().default(false).openapi({
+    example: true,
+    description: 'Si es true, retorna facturas con saldo pendiente (balance_amount > 0).',
   }),
 });
 
