@@ -8,6 +8,7 @@ import {
 const TABLE_NAME = 'invoices';
 const INVOICE_ALIAS = 'i';
 const SELLER_NAME_FIELD = 'seller_name';
+const CONTACT_NAME_FIELD = 'contact_name';
 
 const isInvoiceColumn = (value: string) =>
   INVOICE_COLUMNS.includes(value as (typeof INVOICE_COLUMNS)[number]);
@@ -19,6 +20,9 @@ export const parseInvoiceFields = (fieldsValue: string | undefined) => {
   const normalizeField = (field: string) => {
     if (field === SELLER_NAME_FIELD) {
       return 'seller_contact.contact_name AS seller_name';
+    }
+    if (field === CONTACT_NAME_FIELD) {
+      return 'invoice_contact.contact_name AS contact_name';
     }
     return `${INVOICE_ALIAS}.${field} AS ${field}`;
   };
@@ -33,7 +37,9 @@ export const parseInvoiceFields = (fieldsValue: string | undefined) => {
     .map((field) => field.trim())
     .filter(Boolean);
 
-  const invalid = parsed.filter((field) => !isInvoiceColumn(field) && field !== SELLER_NAME_FIELD);
+  const invalid = parsed.filter(
+    (field) => !isInvoiceColumn(field) && field !== SELLER_NAME_FIELD && field !== CONTACT_NAME_FIELD,
+  );
   if (invalid.length) throw new Error(`Invalid fields: ${invalid.join(', ')}`);
 
   if (!parsed.length) {
@@ -100,6 +106,7 @@ export const listInvoices = async (
   const dataQuery = `
     SELECT ${selectedFields}
     FROM ${TABLE_NAME} ${INVOICE_ALIAS}
+    LEFT JOIN contacts invoice_contact ON ${INVOICE_ALIAS}.id_contact = invoice_contact.id_contact
     LEFT JOIN sellers seller ON ${INVOICE_ALIAS}.id_seller = seller.id_seller
     LEFT JOIN contacts seller_contact ON seller.id_contact = seller_contact.id_contact
     ${whereSql}
@@ -111,6 +118,7 @@ export const listInvoices = async (
   const countQuery = `
     SELECT COUNT(*)::int AS total
     FROM ${TABLE_NAME} ${INVOICE_ALIAS}
+    LEFT JOIN contacts invoice_contact ON ${INVOICE_ALIAS}.id_contact = invoice_contact.id_contact
     LEFT JOIN sellers seller ON ${INVOICE_ALIAS}.id_seller = seller.id_seller
     LEFT JOIN contacts seller_contact ON seller.id_contact = seller_contact.id_contact
     ${whereSql}
@@ -137,6 +145,7 @@ export const getInvoiceById = async (
   const sql = `
     SELECT ${selectedFields}
     FROM ${TABLE_NAME} ${INVOICE_ALIAS}
+    LEFT JOIN contacts invoice_contact ON ${INVOICE_ALIAS}.id_contact = invoice_contact.id_contact
     LEFT JOIN sellers seller ON ${INVOICE_ALIAS}.id_seller = seller.id_seller
     LEFT JOIN contacts seller_contact ON seller.id_contact = seller_contact.id_contact
     WHERE ${INVOICE_ALIAS}.id_invoice = $1
